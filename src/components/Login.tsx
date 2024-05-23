@@ -14,34 +14,29 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "react-router-dom";
 
-interface FormState {
-  nombre: string;
+interface LoginFormState {
   correo: string;
   contrasena: string;
 }
 
-interface ErrorState {
-  nombre: boolean;
+interface LoginErrorState {
   correo: boolean;
   contrasena: boolean;
 }
 
-const RegistroUsuario: React.FC = () => {
-  const navigate = useNavigate();
-
-  const [form, setForm] = useState<FormState>({
-    nombre: "",
+const LoginUsuario: React.FC = () => {
+  const [form, setForm] = useState<LoginFormState>({
     correo: "",
     contrasena: "",
   });
 
-  const [errors, setErrors] = useState<ErrorState>({
-    nombre: false,
+  const [errors, setErrors] = useState<LoginErrorState>({
     correo: false,
     contrasena: false,
   });
 
   const [showPassword, setShowPassword] = useState(false);
+  const navigate = useNavigate();
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>): void => {
     const { name, value } = e.target;
@@ -50,24 +45,15 @@ const RegistroUsuario: React.FC = () => {
       [name]: value,
     });
 
-    // Validar el campo correspondiente
     setErrors({
       ...errors,
-      [name]:
-        value === "" || (name === "contrasena" && !validarContrasena(value)),
+      [name]: value === "",
     });
-  };
-
-  const validarContrasena = (contrasena: string): boolean => {
-    // Validar longitud mínima, al menos una mayúscula, una minúscula, un número y un caracter especial
-    const regex =
-      /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
-    return regex.test(contrasena);
   };
 
   const enviarDatos = async () => {
     try {
-      const response = await fetch("https://localhost:32768/api/usuarios", {
+      const response = await fetch("https://localhost:32768/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -79,33 +65,32 @@ const RegistroUsuario: React.FC = () => {
         throw new Error("Error al enviar los datos");
       }
 
-      // Aquí puedes manejar la respuesta de la API según tus necesidades
-      toast.success("Usuario creado exitosamente");
+      const data = await response.json();
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("usuario", JSON.stringify(data.usuario));
+      toast.success("Inicio de sesión exitoso");
+      navigate("/lugar-trabajo");
     } catch (error) {
       console.error("Error:", error.message);
-      toast.error("Error al registrar el usuario");
+      toast.error("Error al iniciar sesión");
     }
   };
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>): void => {
     e.preventDefault();
 
-    // Validar que todos los campos estén completos y marcar errores
     const newErrors = {
-      nombre: !form.nombre,
       correo: !form.correo,
-      contrasena: !validarContrasena(form.contrasena),
+      contrasena: !form.contrasena,
     };
 
     setErrors(newErrors);
 
-    // Mostrar mensaje de error si hay errores
-    if (newErrors.nombre || newErrors.correo || newErrors.contrasena) {
-      toast.error("Por favor, completa todos los campos correctamente.");
+    if (newErrors.correo || newErrors.contrasena) {
+      toast.error("Por favor, completa todos los campos.");
       return;
     }
 
-    console.log("Datos del formulario:", form);
     enviarDatos();
   };
 
@@ -121,29 +106,10 @@ const RegistroUsuario: React.FC = () => {
           <Card>
             <Card.Body>
               <Card.Title className="text-center mb-4">
-                Registro de Usuario
+                Inicio de Sesión
               </Card.Title>
               <Form onSubmit={handleSubmit}>
-                <Form.Group controlId="formNombre">
-                  <Form.Label className={errors.nombre ? "text-danger" : ""}>
-                    Nombre
-                  </Form.Label>
-                  <Form.Control
-                    type="text"
-                    placeholder="Ingresa tu nombre"
-                    name="nombre"
-                    value={form.nombre}
-                    onChange={handleChange}
-                    className={errors.nombre ? "is-invalid" : ""}
-                  />
-                  {errors.nombre && (
-                    <Form.Text className="text-danger">
-                      Por favor, ingresa tu nombre completo.
-                    </Form.Text>
-                  )}
-                </Form.Group>
-
-                <Form.Group controlId="formCorreo" className="mt-3">
+                <Form.Group controlId="formCorreo">
                   <Form.Label className={errors.correo ? "text-danger" : ""}>
                     Correo Electrónico
                   </Form.Label>
@@ -188,22 +154,20 @@ const RegistroUsuario: React.FC = () => {
                   </InputGroup>
                   {errors.contrasena && (
                     <Form.Text className="text-danger">
-                      La contraseña debe tener al menos 8 caracteres y contener
-                      al menos una mayúscula, una minúscula, un número y un
-                      carácter especial.
+                      Por favor, ingresa tu contraseña.
                     </Form.Text>
                   )}
                 </Form.Group>
 
                 <Button variant="primary" type="submit" className="w-100 mt-4">
-                  Registrarse
+                  Iniciar Sesión
                 </Button>
                 <Button
                   variant="link"
-                  onClick={() => navigate("/login")}
+                  onClick={() => navigate("/registro")}
                   className="w-100 mt-2"
                 >
-                  Iniciar Sesión
+                  Registrarse
                 </Button>
               </Form>
             </Card.Body>
@@ -215,4 +179,4 @@ const RegistroUsuario: React.FC = () => {
   );
 };
 
-export default RegistroUsuario;
+export default LoginUsuario;
