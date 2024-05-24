@@ -2,7 +2,11 @@ import React from "react";
 import { Navbar, Nav, Button, Container } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 
-const Navigation: React.FC = () => {
+interface NavigationProps {
+  onShowModal: () => void;
+}
+
+const Navigation: React.FC<NavigationProps> = ({ onShowModal }) => {
   const navigate = useNavigate();
   const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
 
@@ -17,6 +21,9 @@ const Navigation: React.FC = () => {
       <Container>
         <Navbar.Brand href="/lugar-trabajo">Actividades</Navbar.Brand>
         <Navbar.Toggle />
+        <Button variant="outline-light" onClick={onShowModal} className="mr-3">
+          Crear Tarea
+        </Button>
         <Navbar.Collapse className="justify-content-end">
           <Navbar.Text className="me-2">Hola, {usuario}</Navbar.Text>
           <Navbar.Text className="mr-3">
