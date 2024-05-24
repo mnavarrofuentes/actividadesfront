@@ -1,4 +1,10 @@
-import React, { useState, ChangeEvent, FormEvent, MouseEvent } from "react";
+import React, {
+  useState,
+  useEffect,
+  ChangeEvent,
+  FormEvent,
+  MouseEvent,
+} from "react";
 import {
   Form,
   Button,
@@ -38,6 +44,14 @@ const LoginUsuario: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      console.log("si esta autenticado");
+      navigate("/lugar-trabajo");
+    }
+  }, []);
+
   const handleChange = (e: ChangeEvent<HTMLInputElement>): void => {
     const { name, value } = e.target;
     setForm({
@@ -66,13 +80,19 @@ const LoginUsuario: React.FC = () => {
       }
 
       const data = await response.json();
+      console.log("hola");
+      console.log(data);
       localStorage.setItem("token", data.token);
       localStorage.setItem("usuario", JSON.stringify(data.usuario));
-      toast.success("Inicio de sesión exitoso");
+      console.log("pase");
+      //toast.success("Inicio de sesión exitoso");
+      console.log("mostre");
       navigate("/lugar-trabajo");
     } catch (error) {
       console.error("Error:", error.message);
-      toast.error("Error al iniciar sesión");
+      toast.error(
+        "Correo electrónico o contraseña incorrectos. Por favor, inténtalo de nuevo"
+      );
     }
   };
 

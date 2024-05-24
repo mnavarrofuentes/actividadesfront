@@ -10,19 +10,12 @@ import LoginUsuario from "./components/Login";
 import LugarTrabajo from "./components/LugarTrabajo";
 
 const App: React.FC = () => {
-  const isAuthenticated = !!localStorage.getItem("token");
-
   return (
     <Router>
       <Routes>
         <Route path="/registro" element={<RegistroUsuario />} />
         <Route path="/login" element={<LoginUsuario />} />
-        <Route
-          path="/lugar-trabajo"
-          element={
-            isAuthenticated ? <LugarTrabajo /> : <Navigate to="/login" />
-          }
-        />
+        <Route path="/lugar-trabajo" element={<LugarTrabajo />} />
         <Route path="*" element={<Navigate to="/login" />} />
       </Routes>
     </Router>
