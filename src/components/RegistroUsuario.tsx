@@ -67,7 +67,7 @@ const RegistroUsuario: React.FC = () => {
 
   const enviarDatos = async () => {
     try {
-      const response = await fetch("https://localhost:32768/api/usuarios", {
+      const response = await fetch("https://localhost:32770/api/usuarios", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

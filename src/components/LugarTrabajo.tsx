@@ -72,19 +72,40 @@ const LugarTrabajo: React.FC = () => {
 
     const startIndex = result.source.index;
     const endIndex = result.destination.index;
-    let updatedTareas: Tarea[];
+
+    // Copiamos las listas de tareas actuales
+    const updatedPendientes = [...tareasBoard.pendientes];
+    const updatedCompletadas = [...tareasBoard.completadas];
 
     if (result.source.droppableId === "pendientes") {
-      updatedTareas = [...tareasBoard.pendientes];
-      const [removed] = updatedTareas.splice(startIndex, 1);
-      updatedTareas.splice(endIndex, 0, removed);
-      setTareasBoard({ ...tareasBoard, pendientes: updatedTareas });
+      // Si la tarea se mueve desde "pendientes" a "completadas"
+      if (result.destination.droppableId === "completadas") {
+        const [movedTask] = updatedPendientes.splice(startIndex, 1);
+        movedTask.completada = true; // Cambiamos el estado a completada
+        updatedCompletadas.splice(endIndex, 0, movedTask);
+      } else {
+        // Si la tarea se mueve dentro de "pendientes"
+        const [movedTask] = updatedPendientes.splice(startIndex, 1);
+        updatedPendientes.splice(endIndex, 0, movedTask);
+      }
     } else if (result.source.droppableId === "completadas") {
-      updatedTareas = [...tareasBoard.completadas];
-      const [removed] = updatedTareas.splice(startIndex, 1);
-      updatedTareas.splice(endIndex, 0, removed);
-      setTareasBoard({ ...tareasBoard, completadas: updatedTareas });
+      // Si la tarea se mueve desde "completadas" a "pendientes"
+      if (result.destination.droppableId === "pendientes") {
+        const [movedTask] = updatedCompletadas.splice(startIndex, 1);
+        movedTask.completada = false; // Cambiamos el estado a no completada
+        updatedPendientes.splice(endIndex, 0, movedTask);
+      } else {
+        // Si la tarea se mueve dentro de "completadas"
+        const [movedTask] = updatedCompletadas.splice(startIndex, 1);
+        updatedCompletadas.splice(endIndex, 0, movedTask);
+      }
     }
+
+    // Actualizamos el estado con las listas actualizadas
+    setTareasBoard({
+      pendientes: updatedPendientes,
+      completadas: updatedCompletadas,
+    });
   };
 
   const obtenerTareas = async () => {
@@ -98,7 +119,7 @@ const LugarTrabajo: React.FC = () => {
       const creadorId = decodedToken.userId;
 
       const response = await fetch(
-        `https://localhost:32768/api/tareas/creador/${creadorId}`
+        `https://localhost:32770/api/tareas/creador/${creadorId}`
       );
       if (!response.ok) {
         throw new Error("Error al obtener las tareas");
@@ -157,7 +178,7 @@ const LugarTrabajo: React.FC = () => {
     };
 
     try {
-      const response = await fetch("https://localhost:32768/api/tareas", {
+      const response = await fetch("https://localhost:32770/api/tareas", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -239,10 +260,18 @@ const LugarTrabajo: React.FC = () => {
           </Modal.Body>
         </Modal>
 
-        <div style={{ display: "flex" }}>
-          <div style={{ marginRight: "2rem" }}>
-            <h3>Tareas Pendientes</h3>
-            <DragDropContext onDragEnd={onDragEnd}>
+        <DragDropContext onDragEnd={onDragEnd}>
+          <div style={{ display: "flex" }}>
+            <div
+              style={{
+                marginRight: "2rem",
+                backgroundColor: "lightgray",
+                borderRadius: "10px",
+                padding: "20px",
+                width: "50%",
+              }}
+            >
+              <h3>Tareas Pendientes</h3>
               <Droppable droppableId="pendientes">
                 {(provided) => (
                   <div ref={provided.innerRef} {...provided.droppableProps}>
@@ -277,11 +306,16 @@ const LugarTrabajo: React.FC = () => {
                   </div>
                 )}
               </Droppable>
-            </DragDropContext>
-          </div>
-          <div>
-            <h3>Tareas Completadas</h3>
-            <DragDropContext onDragEnd={onDragEnd}>
+            </div>
+            <div
+              style={{
+                backgroundColor: "lightgray",
+                borderRadius: "10px",
+                padding: "20px",
+                width: "50%",
+              }}
+            >
+              <h3>Tareas Completadas</h3>
               <Droppable droppableId="completadas">
                 {(provided) => (
                   <div ref={provided.innerRef} {...provided.droppableProps}>
@@ -316,9 +350,9 @@ const LugarTrabajo: React.FC = () => {
                   </div>
                 )}
               </Droppable>
-            </DragDropContext>
+            </div>
           </div>
-        </div>
+        </DragDropContext>
       </Container>
     </div>
   );
