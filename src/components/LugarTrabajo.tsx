@@ -5,11 +5,12 @@ import { useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { toast, ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
 interface Tarea {
   nombre: string;
   descripcion: string;
   fechaLimite: string;
+  prioridad: number;
 }
 
 const formatDate = (date: Date): string => {
@@ -33,6 +34,7 @@ const LugarTrabajo: React.FC = () => {
     nombre: "",
     descripcion: "",
     fechaLimite: formatDate(new Date()),
+    prioridad: 0,
   });
 
   useEffect(() => {
@@ -99,9 +101,13 @@ const LugarTrabajo: React.FC = () => {
     const decodedToken: any = jwtDecode(token);
     const creadorId = decodedToken.userId; // ajusta esto según la estructura de tu token
 
+    // Determinar la prioridad más alta y sumarle 1
+    const maxPrioridad = Math.max(...tareas.map((tarea) => tarea.prioridad), 0);
+    const nuevaPrioridad = maxPrioridad + 1;
+
     const tareaConDatos = {
       ...newTarea,
-      prioridad: 0,
+      prioridad: nuevaPrioridad,
       completada: false,
       creadorId: creadorId,
     };
@@ -118,11 +124,12 @@ const LugarTrabajo: React.FC = () => {
 
       if (response.ok) {
         const nuevaTarea = await response.json();
-        setTareas([...tareas, nuevaTarea]);
+        setTareas([nuevaTarea, ...tareas]);
         setNewTarea({
           nombre: "",
           descripcion: "",
           fechaLimite: formatDate(new Date()),
+          prioridad: 0,
         });
         handleCloseModal();
         toast.success("Usuario creado exitosamente");
