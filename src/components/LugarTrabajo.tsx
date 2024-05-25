@@ -1,16 +1,20 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Container, Modal, Form, Button, ListGroup } from "react-bootstrap";
+import { Container, Modal, Form, Button } from "react-bootstrap";
 import Navigation from "./Navbar";
 import { useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { toast } from "react-toastify";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+
 interface Tarea {
+  id: string;
   nombre: string;
   descripcion: string;
   fechaLimite: string;
   prioridad: number;
+  completada: boolean;
 }
 
 const formatDate = (date: Date): string => {
@@ -29,12 +33,21 @@ const LugarTrabajo: React.FC = () => {
   const navigate = useNavigate();
   const initializedRef = useRef(false);
   const [showModal, setShowModal] = useState(false);
-  const [tareas, setTareas] = useState<Tarea[]>([]);
   const [newTarea, setNewTarea] = useState<Tarea>({
+    id: "",
     nombre: "",
     descripcion: "",
     fechaLimite: formatDate(new Date()),
     prioridad: 0,
+    completada: false,
+  });
+
+  const [tareasBoard, setTareasBoard] = useState<{
+    pendientes: Tarea[];
+    completadas: Tarea[];
+  }>({
+    pendientes: [],
+    completadas: [],
   });
 
   useEffect(() => {
@@ -50,6 +63,29 @@ const LugarTrabajo: React.FC = () => {
       initializedRef.current = true;
     }
   }, [navigate]);
+
+  const onDragEnd = (result: any) => {
+    // Si el elemento es soltado fuera de una lista válida
+    if (!result.destination) {
+      return;
+    }
+
+    const startIndex = result.source.index;
+    const endIndex = result.destination.index;
+    let updatedTareas: Tarea[];
+
+    if (result.source.droppableId === "pendientes") {
+      updatedTareas = [...tareasBoard.pendientes];
+      const [removed] = updatedTareas.splice(startIndex, 1);
+      updatedTareas.splice(endIndex, 0, removed);
+      setTareasBoard({ ...tareasBoard, pendientes: updatedTareas });
+    } else if (result.source.droppableId === "completadas") {
+      updatedTareas = [...tareasBoard.completadas];
+      const [removed] = updatedTareas.splice(startIndex, 1);
+      updatedTareas.splice(endIndex, 0, removed);
+      setTareasBoard({ ...tareasBoard, completadas: updatedTareas });
+    }
+  };
 
   const obtenerTareas = async () => {
     try {
@@ -68,7 +104,12 @@ const LugarTrabajo: React.FC = () => {
         throw new Error("Error al obtener las tareas");
       }
       const data = await response.json();
-      setTareas(data);
+      const tareasPendientes = data.filter((tarea: Tarea) => !tarea.completada);
+      const tareasCompletadas = data.filter((tarea: Tarea) => tarea.completada);
+      setTareasBoard({
+        pendientes: tareasPendientes,
+        completadas: tareasCompletadas,
+      });
     } catch (error) {
       console.error("Error al obtener las tareas:", error);
     }
@@ -102,7 +143,10 @@ const LugarTrabajo: React.FC = () => {
     const creadorId = decodedToken.userId; // ajusta esto según la estructura de tu token
 
     // Determinar la prioridad más alta y sumarle 1
-    const maxPrioridad = Math.max(...tareas.map((tarea) => tarea.prioridad), 0);
+    const maxPrioridad = Math.max(
+      ...tareasBoard.pendientes.map((tarea) => tarea.prioridad),
+      0
+    );
     const nuevaPrioridad = maxPrioridad + 1;
 
     const tareaConDatos = {
@@ -124,12 +168,17 @@ const LugarTrabajo: React.FC = () => {
 
       if (response.ok) {
         const nuevaTarea = await response.json();
-        setTareas([nuevaTarea, ...tareas]);
+        setTareasBoard({
+          pendientes: [nuevaTarea, ...tareasBoard.pendientes],
+          completadas: tareasBoard.completadas,
+        });
         setNewTarea({
+          id: "",
           nombre: "",
           descripcion: "",
           fechaLimite: formatDate(new Date()),
           prioridad: 0,
+          completada: false,
         });
         handleCloseModal();
         toast.success("Usuario creado exitosamente");
@@ -190,15 +239,86 @@ const LugarTrabajo: React.FC = () => {
           </Modal.Body>
         </Modal>
 
-        <ListGroup className="mt-4">
-          {tareas.map((tarea, index) => (
-            <ListGroup.Item key={index}>
-              <h5>{tarea.nombre}</h5>
-              <p>{tarea.descripcion}</p>
-              <small>Fecha Límite: {tarea.fechaLimite}</small>
-            </ListGroup.Item>
-          ))}
-        </ListGroup>
+        <div style={{ display: "flex" }}>
+          <div style={{ marginRight: "2rem" }}>
+            <h3>Tareas Pendientes</h3>
+            <DragDropContext onDragEnd={onDragEnd}>
+              <Droppable droppableId="pendientes">
+                {(provided) => (
+                  <div ref={provided.innerRef} {...provided.droppableProps}>
+                    {tareasBoard.pendientes.map((tarea, index) => (
+                      <Draggable
+                        key={tarea.id}
+                        draggableId={tarea.id.toString()}
+                        index={index}
+                      >
+                        {(provided) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            {...provided.dragHandleProps}
+                          >
+                            <div className="card mb-3">
+                              <div className="card-body">
+                                <h5 className="card-title">{tarea.nombre}</h5>
+                                <p className="card-text">{tarea.descripcion}</p>
+                                <p className="card-text">
+                                  <small className="text-muted">
+                                    Fecha Límite: {tarea.fechaLimite}
+                                  </small>
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            </DragDropContext>
+          </div>
+          <div>
+            <h3>Tareas Completadas</h3>
+            <DragDropContext onDragEnd={onDragEnd}>
+              <Droppable droppableId="completadas">
+                {(provided) => (
+                  <div ref={provided.innerRef} {...provided.droppableProps}>
+                    {tareasBoard.completadas.map((tarea, index) => (
+                      <Draggable
+                        key={tarea.id}
+                        draggableId={tarea.id.toString()}
+                        index={index}
+                      >
+                        {(provided) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            {...provided.dragHandleProps}
+                          >
+                            <div className="card mb-3">
+                              <div className="card-body">
+                                <h5 className="card-title">{tarea.nombre}</h5>
+                                <p className="card-text">{tarea.descripcion}</p>
+                                <p className="card-text">
+                                  <small className="text-muted">
+                                    Fecha Límite: {tarea.fechaLimite}
+                                  </small>
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            </DragDropContext>
+          </div>
+        </div>
       </Container>
     </div>
   );
