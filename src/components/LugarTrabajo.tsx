@@ -7,14 +7,17 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { toast } from "react-toastify";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import Select from "react-select";
+import { FaArrowDown, FaArrowUp, FaExclamationCircle } from "react-icons/fa";
 
 interface Tarea {
   id: string;
   nombre: string;
   descripcion: string;
   fechaLimite: string;
-  prioridad: number;
+  orden: number;
   completada: boolean;
+  prioridad: number;
 }
 
 const formatDate = (date: Date): string => {
@@ -30,6 +33,45 @@ const parseDate = (dateStr: string): Date => {
 };
 
 const LugarTrabajo: React.FC = () => {
+  const getPriorityIcon = (priority: number) => {
+    switch (priority) {
+      case 1:
+        return <FaArrowDown style={{ color: "green" }} />;
+      case 2:
+        return <FaArrowUp style={{ color: "orange" }} />;
+      case 3:
+        return <FaExclamationCircle style={{ color: "red" }} />;
+      default:
+        return null;
+    }
+  };
+  const priorityOptions = [
+    {
+      value: 1,
+      label: (
+        <>
+          <FaArrowDown className="me-2" style={{ color: "green" }} /> Baja
+        </>
+      ),
+    },
+    {
+      value: 2,
+      label: (
+        <>
+          <FaArrowUp className="me-2" style={{ color: "orange" }} /> Media
+        </>
+      ),
+    },
+    {
+      value: 3,
+      label: (
+        <>
+          <FaExclamationCircle className="me-2" style={{ color: "red" }} />{" "}
+          Crítica
+        </>
+      ),
+    },
+  ];
   const navigate = useNavigate();
   const initializedRef = useRef(false);
   const [showModal, setShowModal] = useState(false);
@@ -38,8 +80,9 @@ const LugarTrabajo: React.FC = () => {
     nombre: "",
     descripcion: "",
     fechaLimite: formatDate(new Date()),
-    prioridad: 0,
+    orden: 0,
     completada: false,
+    prioridad: 1,
   });
 
   const [tareasBoard, setTareasBoard] = useState<{
@@ -64,7 +107,7 @@ const LugarTrabajo: React.FC = () => {
     }
   }, [navigate]);
 
-  const onDragEnd = (result: any) => {
+  const onDragEnd = async (result: any) => {
     // Si el elemento es soltado fuera de una lista válida
     if (!result.destination) {
       return;
@@ -77,35 +120,60 @@ const LugarTrabajo: React.FC = () => {
     const updatedPendientes = [...tareasBoard.pendientes];
     const updatedCompletadas = [...tareasBoard.completadas];
 
+    let movedTask;
+
     if (result.source.droppableId === "pendientes") {
       // Si la tarea se mueve desde "pendientes" a "completadas"
       if (result.destination.droppableId === "completadas") {
-        const [movedTask] = updatedPendientes.splice(startIndex, 1);
-        movedTask.completada = true; // Cambiamos el estado a completada
+        [movedTask] = updatedPendientes.splice(startIndex, 1);
+        if (movedTask) movedTask.completada = true; // Cambiamos el estado a completada
         updatedCompletadas.splice(endIndex, 0, movedTask);
       } else {
         // Si la tarea se mueve dentro de "pendientes"
-        const [movedTask] = updatedPendientes.splice(startIndex, 1);
+        [movedTask] = updatedPendientes.splice(startIndex, 1);
         updatedPendientes.splice(endIndex, 0, movedTask);
       }
     } else if (result.source.droppableId === "completadas") {
       // Si la tarea se mueve desde "completadas" a "pendientes"
       if (result.destination.droppableId === "pendientes") {
-        const [movedTask] = updatedCompletadas.splice(startIndex, 1);
-        movedTask.completada = false; // Cambiamos el estado a no completada
+        [movedTask] = updatedCompletadas.splice(startIndex, 1);
+        if (movedTask) movedTask.completada = false; // Cambiamos el estado a no completada
         updatedPendientes.splice(endIndex, 0, movedTask);
       } else {
         // Si la tarea se mueve dentro de "completadas"
-        const [movedTask] = updatedCompletadas.splice(startIndex, 1);
+        [movedTask] = updatedCompletadas.splice(startIndex, 1);
         updatedCompletadas.splice(endIndex, 0, movedTask);
       }
     }
 
-    // Actualizamos el estado con las listas actualizadas
+    // Si no se movió ninguna tarea, terminamos la función
+    if (!movedTask) {
+      return;
+    }
+
+    // Actualizamos el estado de tareas
     setTareasBoard({
       pendientes: updatedPendientes,
       completadas: updatedCompletadas,
     });
+
+    // Enviamos la actualización al servidor
+    try {
+      await fetch(`https://localhost:32768/api/tareas/${movedTask.id}`, {
+        method: "PUT",
+        headers: {
+          accept: "*/*",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          orden: endIndex,
+          prioridad: movedTask.prioridad, // Asegúrate de que esta propiedad exista en la tarea
+          completada: movedTask.completada,
+        }),
+      });
+    } catch (error) {
+      console.error("Error al actualizar la tarea:", error);
+    }
   };
 
   const obtenerTareas = async () => {
@@ -119,7 +187,7 @@ const LugarTrabajo: React.FC = () => {
       const creadorId = decodedToken.userId;
 
       const response = await fetch(
-        `https://localhost:32770/api/tareas/creador/${creadorId}`
+        `https://localhost:32768/api/tareas/creador/${creadorId}`
       );
       if (!response.ok) {
         throw new Error("Error al obtener las tareas");
@@ -151,6 +219,11 @@ const LugarTrabajo: React.FC = () => {
     }
   };
 
+  const handlePriorityChange = (selectedOption: any) => {
+    console.log("Selected priority:", selectedOption.value); // Verifica que se está seleccionando la prioridad correcta
+    setNewTarea({ ...newTarea, prioridad: selectedOption.value });
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -163,22 +236,25 @@ const LugarTrabajo: React.FC = () => {
     const decodedToken: any = jwtDecode(token);
     const creadorId = decodedToken.userId; // ajusta esto según la estructura de tu token
 
-    // Determinar la prioridad más alta y sumarle 1
-    const maxPrioridad = Math.max(
-      ...tareasBoard.pendientes.map((tarea) => tarea.prioridad),
+    // Determinar el orden más alta y sumarle 1
+    const maxOrden = Math.max(
+      ...tareasBoard.pendientes.map((tarea) => tarea.orden),
       0
     );
-    const nuevaPrioridad = maxPrioridad + 1;
+    const nuevaOrden = maxOrden + 1;
 
     const tareaConDatos = {
       ...newTarea,
-      prioridad: nuevaPrioridad,
+      orden: nuevaOrden,
       completada: false,
       creadorId: creadorId,
     };
 
+    console.log("mirmeos;");
+    console.log(tareaConDatos);
+
     try {
-      const response = await fetch("https://localhost:32770/api/tareas", {
+      const response = await fetch("https://localhost:32768/api/tareas", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -198,11 +274,12 @@ const LugarTrabajo: React.FC = () => {
           nombre: "",
           descripcion: "",
           fechaLimite: formatDate(new Date()),
-          prioridad: 0,
+          orden: 0,
           completada: false,
+          prioridad: 1,
         });
         handleCloseModal();
-        toast.success("Usuario creado exitosamente");
+        toast.success("Tarea creada exitosamente");
       } else {
         console.error("Error al crear la tarea");
       }
@@ -253,6 +330,17 @@ const LugarTrabajo: React.FC = () => {
                   required
                 />
               </Form.Group>
+              <Form.Group controlId="formPrioridad" className="mt-3">
+                <Form.Label>Prioridad</Form.Label>
+                <Select
+                  options={priorityOptions}
+                  value={priorityOptions.find(
+                    (option) => option.value === newTarea.prioridad
+                  )}
+                  onChange={handlePriorityChange}
+                  isClearable={false}
+                />
+              </Form.Group>
               <Button variant="primary" type="submit" className="mt-4">
                 Crear Tarea
               </Button>
@@ -289,7 +377,10 @@ const LugarTrabajo: React.FC = () => {
                           >
                             <div className="card mb-3">
                               <div className="card-body">
-                                <h5 className="card-title">{tarea.nombre}</h5>
+                                <h5 className="card-title">
+                                  {tarea.nombre}{" "}
+                                  {getPriorityIcon(tarea.prioridad)}
+                                </h5>
                                 <p className="card-text">{tarea.descripcion}</p>
                                 <p className="card-text">
                                   <small className="text-muted">
@@ -333,7 +424,10 @@ const LugarTrabajo: React.FC = () => {
                           >
                             <div className="card mb-3">
                               <div className="card-body">
-                                <h5 className="card-title">{tarea.nombre}</h5>
+                                <h5 className="card-title">
+                                  {tarea.nombre}{" "}
+                                  {getPriorityIcon(tarea.prioridad)}
+                                </h5>
                                 <p className="card-text">{tarea.descripcion}</p>
                                 <p className="card-text">
                                   <small className="text-muted">

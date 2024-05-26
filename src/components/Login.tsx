@@ -67,7 +67,7 @@ const LoginUsuario: React.FC = () => {
 
   const enviarDatos = async () => {
     try {
-      const response = await fetch("https://localhost:32770/api/auth/login", {
+      const response = await fetch("https://localhost:32768/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
