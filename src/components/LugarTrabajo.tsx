@@ -78,6 +78,7 @@ const LugarTrabajo: React.FC = () => {
     orden: 0,
     completada: false,
     prioridad: 1,
+    grupoId: 0,
   });
   const [showEquipoModal, setShowEquipoModal] = useState(false);
   const [showAsingTeamModal, setShowAsingTeamModal] = useState(false);
@@ -295,6 +296,7 @@ const LugarTrabajo: React.FC = () => {
       orden: nuevaOrden,
       completada: false,
       creadorId: creadorId,
+      grupoId: equipoSeleccionado,
     };
 
     console.log("mirmeos;");
@@ -311,11 +313,13 @@ const LugarTrabajo: React.FC = () => {
       });
 
       if (response.ok) {
-        const nuevaTarea = await response.json();
+        /*const nuevaTarea = await response.json();
         setTareasBoard({
           pendientes: [nuevaTarea, ...tareasBoard.pendientes],
           completadas: tareasBoard.completadas,
-        });
+        });*/
+        console.log("antes:" + equipoSeleccionado);
+        handleEquipoClick(equipoSeleccionado ?? 0);
         setNewTarea({
           id: "",
           nombre: "",
@@ -324,6 +328,7 @@ const LugarTrabajo: React.FC = () => {
           orden: 0,
           completada: false,
           prioridad: 1,
+          grupoId: equipoSeleccionado,
         });
         handleCloseModal();
         toast.success("Tarea creada exitosamente");
@@ -428,6 +433,55 @@ const LugarTrabajo: React.FC = () => {
       }
     } catch (error) {
       console.error("Error al conectar con la API", error);
+    }
+  };
+
+  const handleEquipoClick = async (equipoId: number) => {
+    try {
+      console.log("equipo:" + equipoId);
+      if (equipoId === 0) {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          console.log("Token no encontrado");
+          return;
+        }
+
+        const decodedToken: any = jwtDecode(token);
+        const usuarioId = decodedToken.userId;
+        const response = await fetch(
+          `https://localhost:32768/api/tareas/creador/${usuarioId}`
+        );
+        if (!response.ok) {
+          throw new Error("Error al obtener las tareas");
+        }
+        const data = await response.json();
+        setTareasBoard({
+          pendientes: data.filter((tarea: Tarea) => !tarea.completada),
+          completadas: data.filter((tarea: Tarea) => tarea.completada),
+        });
+      } else {
+        const response = await fetch(
+          `https://localhost:32768/api/Equipos/${equipoId}/tareas`,
+          {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Error al obtener las tareas del equipo");
+        }
+
+        const data = await response.json();
+        setTareasBoard({
+          pendientes: data.filter((tarea: Tarea) => !tarea.completada),
+          completadas: data.filter((tarea: Tarea) => tarea.completada),
+        });
+      }
+    } catch (error) {
+      console.error("Error al obtener las tareas del equipo:", error);
     }
   };
 

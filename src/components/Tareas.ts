@@ -6,4 +6,5 @@ export interface Tarea {
   orden: number;
   completada: boolean;
   prioridad: number;
+  grupoId: number | null;
 }
