@@ -13,6 +13,7 @@ import { FaArrowDown, FaArrowUp, FaExclamationCircle } from "react-icons/fa";
 import ListaGrupos from "./ListaGrupos";
 import { Tarea } from "./Tareas";
 import { Equipo } from "./Equipo";
+import { Usuario } from "./Usuario";
 
 const formatDate = (date: Date): string => {
   const day = String(date.getDate()).padStart(2, "0");
@@ -79,10 +80,19 @@ const LugarTrabajo: React.FC = () => {
     prioridad: 1,
   });
   const [showEquipoModal, setShowEquipoModal] = useState(false);
+  const [showAsingTeamModal, setShowAsingTeamModal] = useState(false);
   const [equipoNombre, setEquipoNombre] = useState("");
 
   const handleShowEquipoModal = () => setShowEquipoModal(true);
   const handleCloseEquipoModal = () => setShowEquipoModal(false);
+
+  const handleShowAsingTeamModal = () => setShowAsingTeamModal(true);
+  const handleCloseAsingTeamModal = () => setShowAsingTeamModal(false);
+
+  const handleOpenModalAsing = () => {
+    obtenerUsuariosNoEnEquipo(); // Llamar a obtenerUsuariosNoEnEquipo justo antes de abrir el modal
+    setShowAsingTeamModal(true);
+  };
 
   const [equipos, setEquipos] = useState<Equipo[]>([]);
   const [equipoSeleccionado, setEquipoSeleccionado] = useState<number | null>(
@@ -372,6 +382,55 @@ const LugarTrabajo: React.FC = () => {
     }
   };
 
+  const [usuariosNoEnEquipo, setUsuariosNoEnEquipo] = useState([]);
+  const [selectedUsuarioId, setSelectedUsuarioId] = useState("");
+
+  const obtenerUsuariosNoEnEquipo = async () => {
+    try {
+      const response = await fetch(
+        `https://localhost:32768/api/Equipos/${equipoSeleccionado}/usuariosno`
+      );
+      if (!response.ok) {
+        throw new Error("Error al obtener los usuarios fuera del equipo.");
+      }
+      const data = await response.json();
+      setUsuariosNoEnEquipo(data);
+    } catch (error) {
+      console.error("Error al obtener usuarios fuera del equipo:", error);
+    }
+  };
+
+  const handleSelectUsuario = (e: any) => {
+    setSelectedUsuarioId(e.target.value);
+  };
+
+  const handleAsignarMiembro = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    try {
+      const response = await fetch(
+        `https://localhost:32768/api/Equipos/${equipoSeleccionado}/asignarmiembro`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ usuarioId: selectedUsuarioId }),
+        }
+      );
+
+      if (response.ok) {
+        setEquipoNombre("");
+        handleCloseAsingTeamModal();
+        toast.success("asignacion exitosamente");
+        obtenerEquipos();
+      } else {
+        console.error("Error al crear el equipo");
+      }
+    } catch (error) {
+      console.error("Error al conectar con la API", error);
+    }
+  };
+
   return (
     <div style={{ display: "flex", height: "100vh" }}>
       {/* Menú lateral izquierdo */}
@@ -394,7 +453,46 @@ const LugarTrabajo: React.FC = () => {
         />
 
         <Container style={{ marginTop: "4rem" }}>
-          <h1>Tablero</h1>
+          <h1>
+            Tablero
+            {equipoSeleccionado !== 0 && (
+              <Button
+                variant="primary"
+                className="ms-3"
+                onClick={handleOpenModalAsing}
+              >
+                Agregar Miembro
+              </Button>
+            )}
+          </h1>
+
+          <Modal show={showAsingTeamModal} onHide={handleCloseAsingTeamModal}>
+            <Modal.Header closeButton>
+              <Modal.Title>Agregar Miembro al Equipo</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+              <Form onSubmit={handleAsignarMiembro}>
+                <Form.Group controlId="formUsuario">
+                  <Form.Label>Seleccionar Usuario</Form.Label>
+                  <Form.Control
+                    as="select"
+                    onChange={handleSelectUsuario}
+                    value={selectedUsuarioId}
+                  >
+                    <option value="">Seleccionar...</option>
+                    {usuariosNoEnEquipo.map((usuario: Usuario) => (
+                      <option key={usuario.id} value={usuario.id}>
+                        {usuario.correo}
+                      </option>
+                    ))}
+                  </Form.Control>
+                </Form.Group>
+                <Button variant="primary" type="submit" className="mt-4">
+                  Asignar Miembro
+                </Button>
+              </Form>
+            </Modal.Body>
+          </Modal>
 
           <Modal show={showModal} onHide={handleCloseModal}>
             <Modal.Header closeButton>
