@@ -79,6 +79,7 @@ const LugarTrabajo: React.FC = () => {
     completada: false,
     prioridad: 1,
     grupoId: 0,
+    responsableId: 0,
   });
   const [showEquipoModal, setShowEquipoModal] = useState(false);
   const [showAsingTeamModal, setShowAsingTeamModal] = useState(false);
@@ -87,12 +88,56 @@ const LugarTrabajo: React.FC = () => {
   const handleShowEquipoModal = () => setShowEquipoModal(true);
   const handleCloseEquipoModal = () => setShowEquipoModal(false);
 
-  const handleShowAsingTeamModal = () => setShowAsingTeamModal(true);
   const handleCloseAsingTeamModal = () => setShowAsingTeamModal(false);
+  const [selectedUsuarioResId, setSelectedUsuarioResId] = useState("");
 
   const handleOpenModalAsing = () => {
     obtenerUsuariosNoEnEquipo(); // Llamar a obtenerUsuariosNoEnEquipo justo antes de abrir el modal
     setShowAsingTeamModal(true);
+  };
+
+  useEffect(() => {
+    if (selectedUsuarioResId !== "") {
+      console.log("usuario:" + selectedUsuarioResId);
+      // Aquí puedes agregar cualquier lógica adicional que dependa de selectedUsuarioResId
+    }
+  }, [selectedUsuarioResId]);
+
+  const handleOpenModalTarea = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      console.log("Token no encontrado");
+      return;
+    }
+    const decodedToken: any = jwtDecode(token);
+    const usuarioId = decodedToken.userId;
+    console.log("usuarioantes:" + usuarioId);
+    setSelectedUsuarioResId(usuarioId);
+    if (equipoSeleccionado === 0) {
+      setUsuarios([]);
+    } else {
+      try {
+        const response = await fetch(
+          `https://localhost:32768/api/Equipos/${equipoSeleccionado}/usuarios`,
+          {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Error al obtener los usuarios del equipo");
+        }
+
+        const data = await response.json();
+        setUsuarios(data);
+      } catch (error) {
+        console.error("Error al obtener los usuarios:", error);
+      }
+    }
+    setShowModal(true);
   };
 
   const [equipos, setEquipos] = useState<Equipo[]>([]);
@@ -252,7 +297,6 @@ const LugarTrabajo: React.FC = () => {
     }
   };
 
-  const handleShowModal = () => setShowModal(true);
   const handleCloseModal = () => setShowModal(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -297,6 +341,7 @@ const LugarTrabajo: React.FC = () => {
       completada: false,
       creadorId: creadorId,
       grupoId: equipoSeleccionado,
+      responsableId: selectedUsuarioResId,
     };
 
     console.log("mirmeos;");
@@ -329,6 +374,7 @@ const LugarTrabajo: React.FC = () => {
           completada: false,
           prioridad: 1,
           grupoId: equipoSeleccionado,
+          responsableId: 0,
         });
         handleCloseModal();
         toast.success("Tarea creada exitosamente");
@@ -388,6 +434,7 @@ const LugarTrabajo: React.FC = () => {
   };
 
   const [usuariosNoEnEquipo, setUsuariosNoEnEquipo] = useState([]);
+  const [usuarios, setUsuarios] = useState([]);
   const [selectedUsuarioId, setSelectedUsuarioId] = useState("");
 
   const obtenerUsuariosNoEnEquipo = async () => {
@@ -407,6 +454,11 @@ const LugarTrabajo: React.FC = () => {
 
   const handleSelectUsuario = (e: any) => {
     setSelectedUsuarioId(e.target.value);
+  };
+
+  const handleSelectUsuarioRes = (selectedOption: any) => {
+    console.log("Selected priority:", selectedOption.value);
+    setNewTarea({ ...newTarea, responsableId: selectedOption.value });
   };
 
   const handleAsignarMiembro = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -500,7 +552,7 @@ const LugarTrabajo: React.FC = () => {
       {/* Contenedor principal */}
       <div style={{ flex: 1 }}>
         <Navigation
-          onShowModal={handleShowModal}
+          onShowModal={handleOpenModalTarea}
           onLogout={handleLogout}
           usuario={usuario}
           onCrearEquipo={handleShowEquipoModal}
@@ -592,6 +644,21 @@ const LugarTrabajo: React.FC = () => {
                       (option) => option.value === newTarea.prioridad
                     )}
                     onChange={handlePriorityChange}
+                    isClearable={false}
+                  />
+                </Form.Group>
+                <Form.Group controlId="formUsuario" className="mt-3">
+                  <Form.Label>Seleccionar Responsable</Form.Label>
+                  <Select
+                    defaultValue={{
+                      value: selectedUsuarioResId,
+                      label: "automatico",
+                    }}
+                    options={usuarios.map((usuario: Usuario) => ({
+                      value: usuario.id,
+                      label: usuario.correo,
+                    }))}
+                    onChange={handleSelectUsuarioRes}
                     isClearable={false}
                   />
                 </Form.Group>

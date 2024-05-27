@@ -7,4 +7,5 @@ export interface Tarea {
   completada: boolean;
   prioridad: number;
   grupoId: number | null;
+  responsableId: number;
 }
