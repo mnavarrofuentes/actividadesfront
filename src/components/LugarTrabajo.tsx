@@ -5,10 +5,12 @@ import { useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { toast, ToastContainer } from "react-toastify";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import Select from "react-select";
 import { FaArrowDown, FaArrowUp, FaExclamationCircle } from "react-icons/fa";
+import ListaGrupos from "./ListaGrupos";
 
 interface Tarea {
   id: string;
@@ -289,165 +291,178 @@ const LugarTrabajo: React.FC = () => {
   };
 
   return (
-    <div>
-      <Navigation onShowModal={handleShowModal} />
-      <Container style={{ marginTop: "4rem" }}>
-        <h1>Bienvenido al Lugar de Trabajo</h1>
+    <div style={{ display: "flex" }}>
+      {/* Menú lateral izquierdo */}
+      <div style={{ backgroundColor: "white", width: "20%" }}>
+        <ListaGrupos />
+      </div>
 
-        <Modal show={showModal} onHide={handleCloseModal}>
-          <Modal.Header closeButton>
-            <Modal.Title>Crear Nueva Tarea</Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            <Form onSubmit={handleSubmit}>
-              <Form.Group controlId="formNombre">
-                <Form.Label>Nombre</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="nombre"
-                  value={newTarea.nombre}
-                  onChange={handleInputChange}
-                  required
-                />
-              </Form.Group>
-              <Form.Group controlId="formDescripcion" className="mt-3">
-                <Form.Label>Descripción</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="descripcion"
-                  value={newTarea.descripcion}
-                  onChange={handleInputChange}
-                  required
-                />
-              </Form.Group>
-              <Form.Group controlId="formFechaLimite" className="mt-3">
-                <Form.Label>Fecha Límite</Form.Label>
-                <DatePicker
-                  selected={parseDate(newTarea.fechaLimite)}
-                  onChange={handleDateChange}
-                  dateFormat="dd-MM-yyyy"
-                  className="form-control"
-                  required
-                />
-              </Form.Group>
-              <Form.Group controlId="formPrioridad" className="mt-3">
-                <Form.Label>Prioridad</Form.Label>
-                <Select
-                  options={priorityOptions}
-                  value={priorityOptions.find(
-                    (option) => option.value === newTarea.prioridad
+      {/* Contenedor principal */}
+      <div style={{ flex: 1 }}>
+        <Navigation onShowModal={handleShowModal} />
+        <Container style={{ marginTop: "4rem" }}>
+          <h1>Bienvenido al Lugar de Trabajo</h1>
+
+          <Modal show={showModal} onHide={handleCloseModal}>
+            <Modal.Header closeButton>
+              <Modal.Title>Crear Nueva Tarea</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+              <Form onSubmit={handleSubmit}>
+                <Form.Group controlId="formNombre">
+                  <Form.Label>Nombre</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="nombre"
+                    value={newTarea.nombre}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </Form.Group>
+                <Form.Group controlId="formDescripcion" className="mt-3">
+                  <Form.Label>Descripción</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="descripcion"
+                    value={newTarea.descripcion}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </Form.Group>
+                <Form.Group controlId="formFechaLimite" className="mt-3">
+                  <Form.Label>Fecha Límite</Form.Label>
+                  <DatePicker
+                    selected={parseDate(newTarea.fechaLimite)}
+                    onChange={handleDateChange}
+                    dateFormat="dd-MM-yyyy"
+                    className="form-control"
+                    required
+                  />
+                </Form.Group>
+                <Form.Group controlId="formPrioridad" className="mt-3">
+                  <Form.Label>Prioridad</Form.Label>
+                  <Select
+                    options={priorityOptions}
+                    value={priorityOptions.find(
+                      (option) => option.value === newTarea.prioridad
+                    )}
+                    onChange={handlePriorityChange}
+                    isClearable={false}
+                  />
+                </Form.Group>
+                <Button variant="primary" type="submit" className="mt-4">
+                  Crear Tarea
+                </Button>
+              </Form>
+            </Modal.Body>
+          </Modal>
+
+          <DragDropContext onDragEnd={onDragEnd}>
+            <div style={{ display: "flex" }}>
+              <div
+                style={{
+                  marginRight: "2rem",
+                  backgroundColor: "lightgray",
+                  borderRadius: "10px",
+                  padding: "20px",
+                  width: "50%",
+                }}
+              >
+                <h3>Tareas Pendientes</h3>
+                <Droppable droppableId="pendientes">
+                  {(provided) => (
+                    <div ref={provided.innerRef} {...provided.droppableProps}>
+                      {tareasBoard.pendientes.map((tarea, index) => (
+                        <Draggable
+                          key={tarea.id}
+                          draggableId={tarea.id.toString()}
+                          index={index}
+                        >
+                          {(provided) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                            >
+                              <div className="card mb-3">
+                                <div className="card-body">
+                                  <h5 className="card-title">
+                                    {tarea.nombre}{" "}
+                                    {getPriorityIcon(tarea.prioridad)}
+                                  </h5>
+                                  <p className="card-text">
+                                    {tarea.descripcion}
+                                  </p>
+                                  <p className="card-text">
+                                    <small className="text-muted">
+                                      Fecha Límite: {tarea.fechaLimite}
+                                    </small>
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </div>
                   )}
-                  onChange={handlePriorityChange}
-                  isClearable={false}
-                />
-              </Form.Group>
-              <Button variant="primary" type="submit" className="mt-4">
-                Crear Tarea
-              </Button>
-            </Form>
-          </Modal.Body>
-        </Modal>
-
-        <DragDropContext onDragEnd={onDragEnd}>
-          <div style={{ display: "flex" }}>
-            <div
-              style={{
-                marginRight: "2rem",
-                backgroundColor: "lightgray",
-                borderRadius: "10px",
-                padding: "20px",
-                width: "50%",
-              }}
-            >
-              <h3>Tareas Pendientes</h3>
-              <Droppable droppableId="pendientes">
-                {(provided) => (
-                  <div ref={provided.innerRef} {...provided.droppableProps}>
-                    {tareasBoard.pendientes.map((tarea, index) => (
-                      <Draggable
-                        key={tarea.id}
-                        draggableId={tarea.id.toString()}
-                        index={index}
-                      >
-                        {(provided) => (
-                          <div
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            {...provided.dragHandleProps}
-                          >
-                            <div className="card mb-3">
-                              <div className="card-body">
-                                <h5 className="card-title">
-                                  {tarea.nombre}{" "}
-                                  {getPriorityIcon(tarea.prioridad)}
-                                </h5>
-                                <p className="card-text">{tarea.descripcion}</p>
-                                <p className="card-text">
-                                  <small className="text-muted">
-                                    Fecha Límite: {tarea.fechaLimite}
-                                  </small>
-                                </p>
+                </Droppable>
+              </div>
+              <div
+                style={{
+                  backgroundColor: "lightgray",
+                  borderRadius: "10px",
+                  padding: "20px",
+                  width: "50%",
+                }}
+              >
+                <h3>Tareas Completadas</h3>
+                <Droppable droppableId="completadas">
+                  {(provided) => (
+                    <div ref={provided.innerRef} {...provided.droppableProps}>
+                      {tareasBoard.completadas.map((tarea, index) => (
+                        <Draggable
+                          key={tarea.id}
+                          draggableId={tarea.id.toString()}
+                          index={index}
+                        >
+                          {(provided) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                            >
+                              <div className="card mb-3">
+                                <div className="card-body">
+                                  <h5 className="card-title">
+                                    {tarea.nombre}{" "}
+                                    {getPriorityIcon(tarea.prioridad)}
+                                  </h5>
+                                  <p className="card-text">
+                                    {tarea.descripcion}
+                                  </p>
+                                  <p className="card-text">
+                                    <small className="text-muted">
+                                      Fecha Límite: {tarea.fechaLimite}
+                                    </small>
+                                  </p>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        )}
-                      </Draggable>
-                    ))}
-                    {provided.placeholder}
-                  </div>
-                )}
-              </Droppable>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              </div>
             </div>
-            <div
-              style={{
-                backgroundColor: "lightgray",
-                borderRadius: "10px",
-                padding: "20px",
-                width: "50%",
-              }}
-            >
-              <h3>Tareas Completadas</h3>
-              <Droppable droppableId="completadas">
-                {(provided) => (
-                  <div ref={provided.innerRef} {...provided.droppableProps}>
-                    {tareasBoard.completadas.map((tarea, index) => (
-                      <Draggable
-                        key={tarea.id}
-                        draggableId={tarea.id.toString()}
-                        index={index}
-                      >
-                        {(provided) => (
-                          <div
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            {...provided.dragHandleProps}
-                          >
-                            <div className="card mb-3">
-                              <div className="card-body">
-                                <h5 className="card-title">
-                                  {tarea.nombre}{" "}
-                                  {getPriorityIcon(tarea.prioridad)}
-                                </h5>
-                                <p className="card-text">{tarea.descripcion}</p>
-                                <p className="card-text">
-                                  <small className="text-muted">
-                                    Fecha Límite: {tarea.fechaLimite}
-                                  </small>
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </Draggable>
-                    ))}
-                    {provided.placeholder}
-                  </div>
-                )}
-              </Droppable>
-            </div>
-          </div>
-        </DragDropContext>
-      </Container>
+          </DragDropContext>
+          <ToastContainer />
+        </Container>
+      </div>
     </div>
   );
 };
