@@ -8,4 +8,5 @@ export interface Tarea {
   prioridad: number;
   grupoId: number | null;
   responsableId: number;
+  asignado: string;
 }

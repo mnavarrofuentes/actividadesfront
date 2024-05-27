@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Container, Modal, Form, Button } from "react-bootstrap";
+import { Container, Modal, Form, Button, ListGroup } from "react-bootstrap";
 import Navigation from "./Navbar";
 import { useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
@@ -28,7 +28,7 @@ const parseDate = (dateStr: string): Date => {
 };
 
 const LugarTrabajo: React.FC = () => {
-  const getPriorityIcon = (priority: number) => {
+  const getPriorityIcon = (priority: number | undefined) => {
     switch (priority) {
       case 1:
         return <FaArrowDown style={{ color: "green" }} />;
@@ -70,6 +70,7 @@ const LugarTrabajo: React.FC = () => {
   const navigate = useNavigate();
   const initializedRef = useRef(false);
   const [showModal, setShowModal] = useState(false);
+  const [showModalData, setShowModalData] = useState(false);
   const [newTarea, setNewTarea] = useState<Tarea>({
     id: "",
     nombre: "",
@@ -80,6 +81,7 @@ const LugarTrabajo: React.FC = () => {
     prioridad: 1,
     grupoId: 0,
     responsableId: 0,
+    asignado: "",
   });
   const [showEquipoModal, setShowEquipoModal] = useState(false);
   const [showAsingTeamModal, setShowAsingTeamModal] = useState(false);
@@ -269,6 +271,10 @@ const LugarTrabajo: React.FC = () => {
     }
   };
 
+  const [selectedTarea, setSelectedTarea] = useState<Tarea | null>(null);
+  const [comentario, setComentario] = useState("");
+  const [comentarios, setComentarios] = useState([]);
+
   const obtenerTareas = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -341,7 +347,6 @@ const LugarTrabajo: React.FC = () => {
       completada: false,
       creadorId: creadorId,
       grupoId: equipoSeleccionado,
-      responsableId: selectedUsuarioResId,
     };
 
     console.log("mirmeos;");
@@ -375,6 +380,7 @@ const LugarTrabajo: React.FC = () => {
           prioridad: 1,
           grupoId: equipoSeleccionado,
           responsableId: 0,
+          asignado: "",
         });
         handleCloseModal();
         toast.success("Tarea creada exitosamente");
@@ -537,6 +543,60 @@ const LugarTrabajo: React.FC = () => {
     }
   };
 
+  const obtenerComentarios = async (tareaId: any) => {
+    try {
+      const response = await fetch(
+        `https://localhost:32768/api/tareas/${tareaId}/comentarios`
+      );
+      if (!response.ok) {
+        throw new Error("Error al obtener los comentarios");
+      }
+      const data = await response.json();
+      setComentarios(data);
+    } catch (error) {
+      console.error("Error al obtener los comentarios:", error);
+    }
+  };
+
+  const agregarComentario = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        console.log("Token no encontrado");
+        return;
+      }
+      const decodedToken: any = jwtDecode(token);
+      const userId = decodedToken.userId;
+      const nuevoComentario = {
+        tareaId: selectedTarea?.id,
+        contenido: comentario,
+        usuarioId: userId,
+      };
+      const response = await fetch(`https://localhost:32768/api/comentario`, {
+        method: "POST",
+        headers: {
+          Accept: "*/*",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(nuevoComentario),
+      });
+      if (!response.ok) {
+        throw new Error("Error al agregar el comentario");
+      }
+      setComentario("");
+      obtenerComentarios(selectedTarea?.id);
+      toast.success("Comentario creado exitosamente");
+    } catch (error) {
+      console.error("Error al agregar el comentario:", error);
+    }
+  };
+
+  const handleShowTareaModal = (tarea: Tarea) => {
+    setSelectedTarea(tarea);
+    obtenerComentarios(tarea.id);
+    setShowModalData(true);
+  };
+
   return (
     <div style={{ display: "flex", height: "100vh" }}>
       {/* Menú lateral izquierdo */}
@@ -571,6 +631,42 @@ const LugarTrabajo: React.FC = () => {
               </Button>
             )}
           </h1>
+
+          <Modal show={showModalData} onHide={() => setShowModalData(false)}>
+            <Modal.Header closeButton>
+              <Modal.Title>{selectedTarea?.nombre}</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+              <p>{selectedTarea?.descripcion}</p>
+              <p>Fecha Límite: {selectedTarea?.fechaLimite}</p>
+              <p>Prioridad: {getPriorityIcon(selectedTarea?.prioridad)}</p>
+              <Form.Group controlId="formComentario">
+                <Form.Label>Agregar Comentario</Form.Label>
+                <Form.Control
+                  as="textarea"
+                  rows={3}
+                  value={comentario}
+                  onChange={(e) => setComentario(e.target.value)}
+                />
+                <Button
+                  variant="primary"
+                  className="mt-2"
+                  onClick={agregarComentario}
+                >
+                  Agregar Comentario
+                </Button>
+              </Form.Group>
+              <h5 className="mt-4">Comentarios</h5>
+              <ListGroup>
+                {comentarios.map((comentario: any) => (
+                  <ListGroup.Item key={comentario.id}>
+                    <p>{comentario.contenido}</p>
+                    <small>Por: {comentario.usuarioEmail}</small>
+                  </ListGroup.Item>
+                ))}
+              </ListGroup>
+            </Modal.Body>
+          </Modal>
 
           <Modal show={showAsingTeamModal} onHide={handleCloseAsingTeamModal}>
             <Modal.Header closeButton>
@@ -717,6 +813,7 @@ const LugarTrabajo: React.FC = () => {
                               ref={provided.innerRef}
                               {...provided.draggableProps}
                               {...provided.dragHandleProps}
+                              onClick={() => handleShowTareaModal(tarea)}
                             >
                               <div className="card mb-3">
                                 <div className="card-body">
@@ -730,6 +827,12 @@ const LugarTrabajo: React.FC = () => {
                                   <p className="card-text">
                                     <small className="text-muted">
                                       Fecha Límite: {tarea.fechaLimite}
+                                    </small>
+                                  </p>
+
+                                  <p className="card-text">
+                                    <small className="text-muted">
+                                      Responsable: {tarea.asignado}
                                     </small>
                                   </p>
                                 </div>
@@ -766,6 +869,7 @@ const LugarTrabajo: React.FC = () => {
                               ref={provided.innerRef}
                               {...provided.draggableProps}
                               {...provided.dragHandleProps}
+                              onClick={() => handleShowTareaModal(tarea)}
                             >
                               <div className="card mb-3">
                                 <div className="card-body">
@@ -779,6 +883,11 @@ const LugarTrabajo: React.FC = () => {
                                   <p className="card-text">
                                     <small className="text-muted">
                                       Fecha Límite: {tarea.fechaLimite}
+                                    </small>
+                                  </p>
+                                  <p className="card-text">
+                                    <small className="text-muted">
+                                      Responsable: {tarea.asignado}
                                     </small>
                                   </p>
                                 </div>
