@@ -11,16 +11,8 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import Select from "react-select";
 import { FaArrowDown, FaArrowUp, FaExclamationCircle } from "react-icons/fa";
 import ListaGrupos from "./ListaGrupos";
-
-interface Tarea {
-  id: string;
-  nombre: string;
-  descripcion: string;
-  fechaLimite: string;
-  orden: number;
-  completada: boolean;
-  prioridad: number;
-}
+import { Tarea } from "./Tareas";
+import { Equipo } from "./Equipo";
 
 const formatDate = (date: Date): string => {
   const day = String(date.getDate()).padStart(2, "0");
@@ -86,6 +78,17 @@ const LugarTrabajo: React.FC = () => {
     completada: false,
     prioridad: 1,
   });
+  const [showEquipoModal, setShowEquipoModal] = useState(false);
+  const [equipoNombre, setEquipoNombre] = useState("");
+
+  const handleShowEquipoModal = () => setShowEquipoModal(true);
+  const handleCloseEquipoModal = () => setShowEquipoModal(false);
+
+  const [equipos, setEquipos] = useState<Equipo[]>([]);
+  const [equipoSeleccionado, setEquipoSeleccionado] = useState<number | null>(
+    0
+  );
+  const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
 
   const [tareasBoard, setTareasBoard] = useState<{
     pendientes: Tarea[];
@@ -94,6 +97,37 @@ const LugarTrabajo: React.FC = () => {
     pendientes: [],
     completadas: [],
   });
+
+  const obtenerEquipos = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        console.log("Token no encontrado");
+        return;
+      }
+
+      const decodedToken: any = jwtDecode(token);
+      const usuarioId = decodedToken.userId;
+      const response = await fetch(
+        `https://localhost:32768/api/equipos/usuario/${usuarioId}/equipos`,
+        {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Error al obtener los equipos");
+      }
+
+      const data = await response.json();
+      setEquipos(data);
+    } catch (error) {
+      console.error("Error al obtener los equipos:", error);
+    }
+  };
 
   useEffect(() => {
     if (!initializedRef.current) {
@@ -104,6 +138,7 @@ const LugarTrabajo: React.FC = () => {
       } else {
         console.log("estoy dentro autenticado");
         obtenerTareas(); // Llamada a la función para obtener tareas
+        obtenerEquipos();
       }
       initializedRef.current = true;
     }
@@ -290,18 +325,76 @@ const LugarTrabajo: React.FC = () => {
     }
   };
 
+  const handleTareasActualizadas = (nuevasTareas: Tarea[]) => {
+    setTareasBoard({
+      pendientes: nuevasTareas.filter((tarea) => !tarea.completada),
+      completadas: nuevasTareas.filter((tarea) => tarea.completada),
+    });
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("usuario");
+    navigate("/login");
+  };
+
+  const handleCrearEquipo = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const token = localStorage.getItem("token");
+    if (!token) {
+      console.log("Token no encontrado");
+      return;
+    }
+
+    const decodedToken: any = jwtDecode(token);
+    const usuarioId = decodedToken.userId;
+
+    try {
+      const response = await fetch("https://localhost:32768/api/Equipos", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ nombre: equipoNombre, usuarioId }),
+      });
+
+      if (response.ok) {
+        setEquipoNombre("");
+        handleCloseEquipoModal();
+        toast.success("Equipo creado exitosamente");
+        obtenerEquipos();
+      } else {
+        console.error("Error al crear el equipo");
+      }
+    } catch (error) {
+      console.error("Error al conectar con la API", error);
+    }
+  };
+
   return (
-    <div style={{ display: "flex" }}>
+    <div style={{ display: "flex", height: "100vh" }}>
       {/* Menú lateral izquierdo */}
       <div style={{ backgroundColor: "white", width: "20%" }}>
-        <ListaGrupos />
+        <ListaGrupos
+          equipos={equipos}
+          onEquipoClick={handleTareasActualizadas}
+          equipoSeleccionado={equipoSeleccionado}
+          setEquipoSeleccionado={setEquipoSeleccionado}
+        />
       </div>
 
       {/* Contenedor principal */}
       <div style={{ flex: 1 }}>
-        <Navigation onShowModal={handleShowModal} />
+        <Navigation
+          onShowModal={handleShowModal}
+          onLogout={handleLogout}
+          usuario={usuario}
+          onCrearEquipo={handleShowEquipoModal}
+        />
+
         <Container style={{ marginTop: "4rem" }}>
-          <h1>Bienvenido al Lugar de Trabajo</h1>
+          <h1>Tablero</h1>
 
           <Modal show={showModal} onHide={handleCloseModal}>
             <Modal.Header closeButton>
@@ -352,6 +445,28 @@ const LugarTrabajo: React.FC = () => {
                 </Form.Group>
                 <Button variant="primary" type="submit" className="mt-4">
                   Crear Tarea
+                </Button>
+              </Form>
+            </Modal.Body>
+          </Modal>
+
+          <Modal show={showEquipoModal} onHide={handleCloseEquipoModal}>
+            <Modal.Header closeButton>
+              <Modal.Title>Crear Nuevo Equipo</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+              <Form onSubmit={handleCrearEquipo}>
+                <Form.Group controlId="formEquipoNombre">
+                  <Form.Label>Nombre del Equipo</Form.Label>
+                  <Form.Control
+                    type="text"
+                    value={equipoNombre}
+                    onChange={(e) => setEquipoNombre(e.target.value)}
+                    required
+                  />
+                </Form.Group>
+                <Button variant="primary" type="submit" className="mt-4">
+                  Crear Equipo
                 </Button>
               </Form>
             </Modal.Body>
