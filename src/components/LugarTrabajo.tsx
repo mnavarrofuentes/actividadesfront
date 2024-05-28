@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Container, Modal, Form, Button, ListGroup } from "react-bootstrap";
+import {
+  Container,
+  Modal,
+  Form,
+  Button,
+  ListGroup,
+  InputGroup,
+} from "react-bootstrap";
 import Navigation from "./Navbar";
 import { useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
@@ -28,6 +35,11 @@ const parseDate = (dateStr: string): Date => {
 };
 
 const LugarTrabajo: React.FC = () => {
+  const [usuarioLog, setUsuarioLog] = useState("");
+  const [filtroNombre, setFiltroNombre] = useState("");
+  const [filtroPrioridad, setFiltroPrioridad] = useState<null | number>(null);
+  const [filtroResponsable, setFiltroResponsable] = useState("");
+
   const getPriorityIcon = (priority: number | undefined) => {
     switch (priority) {
       case 1:
@@ -195,6 +207,15 @@ const LugarTrabajo: React.FC = () => {
         navigate("/login", { replace: true });
       } else {
         console.log("estoy dentro autenticado");
+        const token = localStorage.getItem("token");
+        if (!token) {
+          console.log("Token no encontrado");
+          return;
+        }
+        const decodedToken: any = jwtDecode(token);
+        const usuarioId = decodedToken.userId;
+        console.log("log:" + decodedToken.userId);
+        setUsuarioLog(usuarioId);
         obtenerTareas(); // Llamada a la función para obtener tareas
         obtenerEquipos();
       }
@@ -285,15 +306,53 @@ const LugarTrabajo: React.FC = () => {
       const decodedToken: any = jwtDecode(token);
       const creadorId = decodedToken.userId;
 
+      let url = "";
+      if (equipoSeleccionado) {
+        url = `https://localhost:32768/api/Equipos/${equipoSeleccionado}/tareas`;
+      } else {
+        url = `https://localhost:32768/api/tareas/creador/${creadorId}`;
+      }
+
       const response = await fetch(
-        `https://localhost:32768/api/tareas/creador/${creadorId}`
+        url,
+        equipoSeleccionado
+          ? {
+              method: "GET",
+              headers: {
+                Accept: "application/json",
+              },
+            }
+          : undefined
       );
       if (!response.ok) {
         throw new Error("Error al obtener las tareas");
       }
       const data = await response.json();
-      const tareasPendientes = data.filter((tarea: Tarea) => !tarea.completada);
-      const tareasCompletadas = data.filter((tarea: Tarea) => tarea.completada);
+
+      // Aplicar los filtros en el frontend
+      const tareasFiltradas = data.filter((tarea: Tarea) => {
+        let cumpleFiltro = true;
+        if (filtroNombre !== "" && !tarea.nombre.includes(filtroNombre)) {
+          cumpleFiltro = false;
+        }
+        if (filtroPrioridad !== null && tarea.prioridad !== filtroPrioridad) {
+          cumpleFiltro = false;
+        }
+        if (
+          filtroResponsable !== "" &&
+          !tarea.asignado.includes(filtroResponsable)
+        ) {
+          cumpleFiltro = false;
+        }
+        return cumpleFiltro;
+      });
+
+      const tareasPendientes = tareasFiltradas.filter(
+        (tarea: Tarea) => !tarea.completada
+      );
+      const tareasCompletadas = tareasFiltradas.filter(
+        (tarea: Tarea) => tarea.completada
+      );
       setTareasBoard({
         pendientes: tareasPendientes,
         completadas: tareasCompletadas,
@@ -347,6 +406,8 @@ const LugarTrabajo: React.FC = () => {
       completada: false,
       creadorId: creadorId,
       grupoId: equipoSeleccionado,
+      responsableId:
+        newTarea.responsableId === 0 ? usuarioLog : newTarea.responsableId,
     };
 
     console.log("mirmeos;");
@@ -597,6 +658,10 @@ const LugarTrabajo: React.FC = () => {
     setShowModalData(true);
   };
 
+  useEffect(() => {
+    obtenerTareas();
+  }, [filtroNombre, filtroPrioridad, filtroResponsable]);
+
   return (
     <div style={{ display: "flex", height: "100vh" }}>
       {/* Menú lateral izquierdo */}
@@ -619,7 +684,7 @@ const LugarTrabajo: React.FC = () => {
         />
 
         <Container style={{ marginTop: "4rem" }}>
-          <h1>
+          <h1 className="text-white font-weight-bold">
             Tablero
             {equipoSeleccionado !== 0 && (
               <Button
@@ -631,6 +696,71 @@ const LugarTrabajo: React.FC = () => {
               </Button>
             )}
           </h1>
+
+          <Form.Group controlId="formFiltros" className="mb-3">
+            <div className="row">
+              <div className="col-md-4 mb-3">
+                <Form.Label className="text-white font-weight-bold">
+                  Filtrar por Prioridad
+                </Form.Label>
+                <Select
+                  options={[
+                    { value: null, label: "Ninguno" },
+                    ...priorityOptions,
+                  ]}
+                  value={priorityOptions.find(
+                    (option) => option.value === filtroPrioridad
+                  )}
+                  onChange={(selectedOption: any) =>
+                    setFiltroPrioridad(selectedOption.value)
+                  }
+                  isClearable={true}
+                />
+              </div>
+
+              <div className="col-md-4 mb-3">
+                <Form.Label className="text-white font-weight-bold">
+                  Buscar por Nombre de Tarea
+                </Form.Label>
+                <InputGroup>
+                  <Form.Control
+                    type="text"
+                    value={filtroNombre}
+                    onChange={(e) => setFiltroNombre(e.target.value)}
+                  />
+                  {filtroNombre && (
+                    <Button
+                      variant="outline-secondary"
+                      onClick={() => setFiltroNombre("")}
+                    >
+                      X
+                    </Button>
+                  )}
+                </InputGroup>
+              </div>
+
+              <div className="col-md-4 mb-3">
+                <Form.Label className="text-white font-weight-bold">
+                  Buscar por Responsable
+                </Form.Label>
+                <InputGroup>
+                  <Form.Control
+                    type="text"
+                    value={filtroResponsable}
+                    onChange={(e) => setFiltroResponsable(e.target.value)}
+                  />
+                  {filtroResponsable && (
+                    <Button
+                      variant="outline-secondary"
+                      onClick={() => setFiltroResponsable("")}
+                    >
+                      X
+                    </Button>
+                  )}
+                </InputGroup>
+              </div>
+            </div>
+          </Form.Group>
 
           <Modal show={showModalData} onHide={() => setShowModalData(false)}>
             <Modal.Header closeButton>

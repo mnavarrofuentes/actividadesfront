@@ -19,19 +19,25 @@ const Navigation: React.FC<NavigationProps> = ({
       <Container>
         <Navbar.Brand href="/lugar-trabajo">Actividades</Navbar.Brand>
         <Navbar.Toggle />
-        <Button variant="outline-light" onClick={onShowModal} className="mr-3">
-          Crear Tarea
-        </Button>
-        <Button
-          variant="outline-light"
-          onClick={onCrearEquipo}
-          className="mr-3"
-        >
-          Crear Equipo
-        </Button>
+        <div className="me-2">
+          <Button
+            variant="outline-light"
+            onClick={onShowModal}
+            className="me-2"
+          >
+            Crear Tarea
+          </Button>
+          <Button
+            variant="outline-light"
+            onClick={onCrearEquipo}
+            className="me-2"
+          >
+            Crear Equipo
+          </Button>
+        </div>
         <Navbar.Collapse className="justify-content-end">
           <Navbar.Text className="me-2">Hola, {usuario}</Navbar.Text>
-          <Navbar.Text className="mr-3">
+          <Navbar.Text>
             <Button variant="outline-light" onClick={onLogout}>
               Cerrar Sesión
             </Button>
