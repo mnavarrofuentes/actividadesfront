@@ -70,7 +70,7 @@ const ListaGrupos: React.FC<ListaGruposProps> = ({
           active={!equipoSeleccionado}
           onClick={() => handleEquipoClick(0)}
         >
-          Mis Tareas
+          Mis Tareas(individual)
         </ListGroup.Item>
         {equipos.map((equipo) => (
           <ListGroup.Item

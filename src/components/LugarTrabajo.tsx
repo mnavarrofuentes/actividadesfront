@@ -454,6 +454,9 @@ const LugarTrabajo: React.FC = () => {
   };
 
   const handleTareasActualizadas = (nuevasTareas: Tarea[]) => {
+    setFiltroNombre("");
+    setFiltroPrioridad(null);
+    setFiltroResponsable("");
     setTareasBoard({
       pendientes: nuevasTareas.filter((tarea) => !tarea.completada),
       completadas: nuevasTareas.filter((tarea) => tarea.completada),
@@ -708,9 +711,13 @@ const LugarTrabajo: React.FC = () => {
                     { value: null, label: "Ninguno" },
                     ...priorityOptions,
                   ]}
-                  value={priorityOptions.find(
-                    (option) => option.value === filtroPrioridad
-                  )}
+                  value={
+                    filtroPrioridad === null
+                      ? { value: null, label: "Ninguno" }
+                      : priorityOptions.find(
+                          (option) => option.value === filtroPrioridad
+                        )
+                  }
                   onChange={(selectedOption: any) =>
                     setFiltroPrioridad(selectedOption.value)
                   }
