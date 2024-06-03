@@ -689,9 +689,76 @@ const LugarTrabajo: React.FC = () => {
     setShowModalData(true);
   };
 
+  // Nueva función para crear los datos del gráfico de barras por prioridad
+  const createPriorityBarData = (tareas: any) => {
+    console.log(tareas);
+    const prioridadLabels = ["Baja", "Media", "Alta"];
+    const prioridadCounts = [0, 0, 0];
+    const prioridadCompletadas = [0, 0, 0];
+
+    tareas.forEach((tarea: any) => {
+      if (tarea.completada) {
+        console.log("entre");
+        prioridadCompletadas[tarea.prioridad - 1]++;
+      } else {
+        prioridadCounts[tarea.prioridad - 1]++;
+      }
+    });
+
+    return {
+      labels: prioridadLabels,
+      datasets: [
+        {
+          label: "Pendientes",
+          data: prioridadCounts,
+          backgroundColor: "rgba(255, 99, 132, 0.2)",
+          borderColor: "rgba(255, 99, 132, 1)",
+          borderWidth: 1,
+        },
+        {
+          label: "Completadas",
+          data: prioridadCompletadas,
+          backgroundColor: "rgba(54, 162, 235, 0.2)",
+          borderColor: "rgba(54, 162, 235, 1)",
+          borderWidth: 1,
+        },
+      ],
+    };
+  };
+
+  const createAsignadoBarData = (tareas: Tarea[]): any => {
+    const asignadoCounts: { [key: string]: number } = {};
+    const asignadoLabels: string[] = [];
+
+    tareas.forEach((tarea) => {
+      const asignado = tarea.asignado;
+      if (!asignadoCounts[asignado]) {
+        asignadoCounts[asignado] = 1;
+        asignadoLabels.push(asignado);
+      } else {
+        asignadoCounts[asignado]++;
+      }
+    });
+
+    const data = {
+      labels: asignadoLabels,
+      datasets: [
+        {
+          label: "Número de Tareas",
+          data: asignadoLabels.map((asignado) => asignadoCounts[asignado]),
+          backgroundColor: "rgba(75, 192, 192, 0.2)",
+          borderColor: "rgba(75, 192, 192, 1)",
+          borderWidth: 1,
+        },
+      ],
+    };
+
+    return data;
+  };
+
   const handleShowReport = () => {
     setShowReportModal(true);
-    const data = {
+    const pieData = {
       labels: ["Pendientes", "Completadas"],
       datasets: [
         {
@@ -706,7 +773,21 @@ const LugarTrabajo: React.FC = () => {
         },
       ],
     };
-    setGrafica(data);
+
+    const priorityBarData = createPriorityBarData([
+      ...tareasBoard.pendientes,
+      ...tareasBoard.completadas,
+    ]);
+    const responsableBarData = createAsignadoBarData([
+      ...tareasBoard.pendientes,
+      ...tareasBoard.completadas,
+    ]);
+
+    setGrafica({
+      pieData,
+      priorityBarData,
+      responsableBarData,
+    });
   };
 
   useEffect(() => {
@@ -820,12 +901,32 @@ const LugarTrabajo: React.FC = () => {
             </div>
           </Form.Group>
 
-          <Modal show={showReportModal} onHide={handleCloseReportModal}>
+          <Modal
+            show={showReportModal}
+            onHide={handleCloseReportModal}
+            size="lg"
+          >
             <Modal.Header closeButton>
               <Modal.Title>Reporte de Tareas</Modal.Title>
             </Modal.Header>
             <Modal.Body>
-              <Pie data={grafica} />
+              <div className="row">
+                <div className="col-md-6">
+                  <h5>Distribución completado</h5>
+                  <Pie data={grafica?.pieData} />
+                </div>
+                <div className="col-md-6">
+                  <h5>Distribución por Prioridad</h5>
+                  <Bar data={grafica?.responsableBarData} />
+                </div>
+              </div>
+              <div className="row mt-4">
+                <div className="col-md-12">
+                  <h5>Distribución por Responsable</h5>
+                  <Bar data={grafica?.priorityBarData} />
+                </div>
+                {/* Aquí puedes agregar otra gráfica si lo deseas */}
+              </div>
             </Modal.Body>
           </Modal>
 
