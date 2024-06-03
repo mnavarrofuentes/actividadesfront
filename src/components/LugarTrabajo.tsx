@@ -21,6 +21,31 @@ import ListaGrupos from "./ListaGrupos";
 import { Tarea } from "./Tareas";
 import { Equipo } from "./Equipo";
 import { Usuario } from "./Usuario";
+import { Bar, Pie, Line } from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+  PointElement,
+  LineElement,
+} from "chart.js";
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+  PointElement,
+  LineElement
+);
 
 const formatDate = (date: Date): string => {
   const day = String(date.getDate()).padStart(2, "0");
@@ -36,9 +61,12 @@ const parseDate = (dateStr: string): Date => {
 
 const LugarTrabajo: React.FC = () => {
   const [usuarioLog, setUsuarioLog] = useState("");
+  const [grafica, setGrafica] = useState<any>(null);
   const [filtroNombre, setFiltroNombre] = useState("");
   const [filtroPrioridad, setFiltroPrioridad] = useState<null | number>(null);
   const [filtroResponsable, setFiltroResponsable] = useState("");
+  const [showReportModal, setShowReportModal] = useState(false);
+  const handleCloseReportModal = () => setShowReportModal(false);
 
   const getPriorityIcon = (priority: number | undefined) => {
     switch (priority) {
@@ -661,6 +689,26 @@ const LugarTrabajo: React.FC = () => {
     setShowModalData(true);
   };
 
+  const handleShowReport = () => {
+    setShowReportModal(true);
+    const data = {
+      labels: ["Pendientes", "Completadas"],
+      datasets: [
+        {
+          label: "Tareas",
+          data: [tareasBoard.pendientes.length, tareasBoard.completadas.length],
+          backgroundColor: [
+            "rgba(255, 99, 132, 0.2)",
+            "rgba(54, 162, 235, 0.2)",
+          ],
+          borderColor: ["rgba(255, 99, 132, 1)", "rgba(54, 162, 235, 1)"],
+          borderWidth: 1,
+        },
+      ],
+    };
+    setGrafica(data);
+  };
+
   useEffect(() => {
     obtenerTareas();
   }, [filtroNombre, filtroPrioridad, filtroResponsable]);
@@ -687,17 +735,20 @@ const LugarTrabajo: React.FC = () => {
         />
 
         <Container style={{ marginTop: "4rem" }}>
-          <h1 className="text-white font-weight-bold">
+          <h1 className="text-white font-weight-bold me-2">
             Tablero
             {equipoSeleccionado !== 0 && (
               <Button
                 variant="primary"
-                className="ms-3"
+                className="ms-3 me-2"
                 onClick={handleOpenModalAsing}
               >
                 Agregar Miembro
               </Button>
             )}
+            <Button className="ms-3" onClick={() => handleShowReport()}>
+              Ver Reportes
+            </Button>
           </h1>
 
           <Form.Group controlId="formFiltros" className="mb-3">
@@ -768,6 +819,15 @@ const LugarTrabajo: React.FC = () => {
               </div>
             </div>
           </Form.Group>
+
+          <Modal show={showReportModal} onHide={handleCloseReportModal}>
+            <Modal.Header closeButton>
+              <Modal.Title>Reporte de Tareas</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+              <Pie data={grafica} />
+            </Modal.Body>
+          </Modal>
 
           <Modal show={showModalData} onHide={() => setShowModalData(false)}>
             <Modal.Header closeButton>
